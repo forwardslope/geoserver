@@ -66,29 +66,38 @@ public class GMLNotificationSerializer implements PublishCallbackMBean, CatalogL
             return 0L;
         }
     };
-    
+
+    XSDSchema xsdSchema;
     private final ThreadLocal<Encoder> encoder = new ThreadLocal<Encoder>() {
+
+        //@Override
+        //protected Encoder initialValue() {
+        //    try {
+        //        // TODO: Get this patch into GeoTools?
+        //        xsdSchema = xmlConfig.getXSD().getSchema();
+        //        Encoder enc = new Encoder(xmlConfig, xsdSchema) /* {
+        //            {
+        //                // setResuseIndex(true);
+        //            }
+        //            protected void resetContext(MutablePicoContainer context) {
+        //                context.unregisterComponent(XSDIdRegistry.class);
+        //                context.registerComponentInstance(new XSDIdRegistry());
+        //            }
+        //
+        //            protected void clearContext(MutablePicoContainer context) {
+        //            };
+        //        };
+        //        enc.setResuseIndex(true) */;
+        //        return enc;
+        //    } catch(IOException e) {
+        //        throw new RuntimeException(e);
+        //    }
+        //}
+
         @Override
-        protected Encoder initialValue() {
-            try {
-                // TODO: Get this patch into GeoTools?
-                Encoder enc = new Encoder(xmlConfig, xmlConfig.getXSD().getSchema()) /* {
-                    {
-                        // setResuseIndex(true);
-                    }
-                    protected void resetContext(MutablePicoContainer context) {
-                        context.unregisterComponent(XSDIdRegistry.class);
-                        context.registerComponentInstance(new XSDIdRegistry());
-                    }
-                    
-                    protected void clearContext(MutablePicoContainer context) {
-                    };
-                };
-                enc.setResuseIndex(true) */;
-                return enc;
-            } catch(IOException e) {
-                throw new RuntimeException(e);
-            }
+        public Encoder get()
+        {
+            return new Encoder(xmlConfig, xsdSchema);
         }
     };
     
@@ -105,6 +114,14 @@ public class GMLNotificationSerializer implements PublishCallbackMBean, CatalogL
     public GMLNotificationSerializer(Catalog catalog, Configuration xmlConfig) {
         this.catalog = catalog;
         this.xmlConfig = xmlConfig;
+        try
+        {
+            xsdSchema = xmlConfig.getXSD().getSchema();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
         resetStats();
     }
     
@@ -204,7 +221,12 @@ public class GMLNotificationSerializer implements PublishCallbackMBean, CatalogL
             encoder.setInline(true);
             loadNamespaceBindings(encoder.getNamespaces(), feature, xmlConfig.getXSD().getSchema());
             
-            encoder.encode(feature, GML._Feature, handler);
+            try {
+            	encoder.encode(feature, GML._Feature, handler);
+            } catch (NullPointerException e) {
+           		LOG.warn("Error encoding feature!");
+                e.printStackTrace();
+            }
 
             return sw.toString();
         } catch(Exception e) {
